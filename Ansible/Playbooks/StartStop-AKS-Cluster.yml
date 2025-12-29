@@ -1,0 +1,20 @@
+- name: AKS Cluster Control
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Start/Stop AKS cluster via script
+      ansible.builtin.shell: |
+        /bin/bash ../Scripts/StartStop-AKS-Cluster.sh \
+          "{{ cluster_action }}" \
+          "{{ resource_group }}" \
+          "{{ cluster_name }}"
+      environment:
+        AZURE_CLIENT_ID: "{{ lookup('env', 'AZURE_CLIENT_ID') }}"
+        AZURE_SECRET: "{{ lookup('env', 'AZURE_SECRET') }}"
+        AZURE_TENANT: "{{ lookup('env', 'AZURE_TENANT') }}"
+      register: result
+
+    - name: Show results
+      ansible.builtin.debug:
+        var: result.stdout_lines
