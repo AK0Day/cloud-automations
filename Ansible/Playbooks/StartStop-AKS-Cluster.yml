@@ -4,6 +4,21 @@
   gather_facts: no
 
   tasks:
+
+    - name: Install Azure CLI if not present
+      ansible.builtin.shell: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+      when: az_check.rc != 0
+    
+    - name: Verify Azure CLI installation
+      ansible.builtin.command: az --version
+      register: az_version
+      changed_when: false
+    
+    - name: Show Azure CLI version
+      ansible.builtin.debug:
+        msg: "{{ az_version.stdout_lines[0] }}"
+        
     - name: Start/Stop AKS cluster via script
       ansible.builtin.shell: |
         /bin/bash ../Scripts/StartStop-AKS-Cluster.sh \
