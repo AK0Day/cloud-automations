@@ -14,12 +14,7 @@
           echo "Azure CLI already installed"
         fi
       register: az_install
-    
-    - name: Verify Azure CLI installation
-      ansible.builtin.shell: az --version
-      register: az_version
-      changed_when: false
-    
+
     - name: Start/Stop AKS cluster via script
       ansible.builtin.shell: |
         /bin/bash ../Scripts/StartStop-AKS-Cluster.sh \
