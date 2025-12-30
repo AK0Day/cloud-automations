@@ -5,11 +5,11 @@
 
   tasks:
 
-    - name: Install Azure CLI (checks and installs if needed)
+    - name: Install Azure CLI via pip
       ansible.builtin.shell: |
         if ! command -v az &> /dev/null; then
-          echo "Installing Azure CLI..."
-          curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+          echo "Installing Azure CLI via pip..."
+          pip3 install azure-cli
         else
           echo "Azure CLI already installed"
         fi
