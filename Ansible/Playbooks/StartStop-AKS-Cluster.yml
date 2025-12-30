@@ -5,10 +5,15 @@
 
   tasks:
 
-    - name: Install Azure CLI if not present
+    - name: Install Azure CLI (checks and installs if needed)
       ansible.builtin.shell: |
-        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-      when: az_check.rc != 0
+        if ! command -v az &> /dev/null; then
+          echo "Installing Azure CLI..."
+          curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+        else
+          echo "Azure CLI already installed"
+        fi
+      register: az_install
     
     - name: Verify Azure CLI installation
       ansible.builtin.command: az --version
@@ -18,7 +23,7 @@
     - name: Show Azure CLI version
       ansible.builtin.debug:
         msg: "{{ az_version.stdout_lines[0] }}"
-        
+
     - name: Start/Stop AKS cluster via script
       ansible.builtin.shell: |
         /bin/bash ../Scripts/StartStop-AKS-Cluster.sh \
