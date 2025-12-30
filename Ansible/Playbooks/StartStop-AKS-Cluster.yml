@@ -16,14 +16,10 @@
       register: az_install
     
     - name: Verify Azure CLI installation
-      ansible.builtin.command: az --version
+      ansible.builtin.shell: az --version
       register: az_version
       changed_when: false
     
-    - name: Show Azure CLI version
-      ansible.builtin.debug:
-        msg: "{{ az_version.stdout_lines[0] }}"
-
     - name: Start/Stop AKS cluster via script
       ansible.builtin.shell: |
         /bin/bash ../Scripts/StartStop-AKS-Cluster.sh \
