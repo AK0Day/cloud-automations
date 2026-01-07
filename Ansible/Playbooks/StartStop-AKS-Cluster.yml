@@ -3,30 +3,58 @@
   connection: local
   gather_facts: no
 
+  vars:
+    azure_client_id: "{{ lookup('env', 'AZURE_CLIENT_ID') }}"
+    azure_secret: "{{ lookup('env', 'AZURE_SECRET') }}"
+    azure_tenant: "{{ lookup('env', 'AZURE_TENANT') }}"
+
   tasks:
+    - name: Validate required Azure credentials
+      ansible.builtin.assert:
+        that:
+          - azure_client_id | length > 0
+          - azure_secret | length > 0
+          - azure_tenant | length > 0
+        fail_msg: "Missing required Azure credentials. Please set AZURE_CLIENT_ID, AZURE_SECRET, and AZURE_TENANT environment variables."
+        success_msg: "Azure credentials validated"
 
-    - name: Install Azure CLI via pip
-      ansible.builtin.shell: |
-        if ! command -v az &> /dev/null; then
-          echo "Installing Azure CLI via pip..."
-          pip3 install azure-cli
-        else
-          echo "Azure CLI already installed"
-        fi
-      register: az_install
+    - name: Validate cluster action parameter
+      ansible.builtin.assert:
+        that:
+          - cluster_action is defined
+          - cluster_action in ['start', 'stop']
+        fail_msg: "cluster_action must be either 'start' or 'stop'"
+        success_msg: "Cluster action '{{ cluster_action }}' is valid"
 
-    - name: Start/Stop AKS cluster via script
-      ansible.builtin.shell: |
-        /bin/bash ../Scripts/StartStop-AKS-Cluster.sh \
-          "{{ cluster_action }}" \
-          "{{ resource_group }}" \
-          "{{ cluster_name }}"
-      environment:
-        AZURE_CLIENT_ID: "{{ lookup('env', 'AZURE_CLIENT_ID') }}"
-        AZURE_SECRET: "{{ lookup('env', 'AZURE_SECRET') }}"
-        AZURE_TENANT: "{{ lookup('env', 'AZURE_TENANT') }}"
-      register: result
+    - name: Validate resource group and cluster name
+      ansible.builtin.assert:
+        that:
+          - resource_group is defined
+          - resource_group | length > 0
+          - cluster_name is defined
+          - cluster_name | length > 0
+        fail_msg: "resource_group and cluster_name must be provided"
+        success_msg: "Resource group and cluster name validated"
+
+    - name: Azure login with service principal
+      ansible.builtin.command:
+        cmd: az login --service-principal -u "{{ azure_client_id }}" -p "{{ azure_secret }}" --tenant "{{ azure_tenant }}" --output none
+      register: login_result
+      changed_when: false
+      failed_when: login_result.rc != 0
+
+    - name: "{{ cluster_action | capitalize }} AKS cluster {{ cluster_name }}"
+      ansible.builtin.command:
+        cmd: az aks {{ cluster_action }} --name "{{ cluster_name }}" --resource-group "{{ resource_group }}"
+      register: aks_result
+      changed_when: aks_result.rc == 0
 
     - name: Show results
       ansible.builtin.debug:
-        var: result.stdout_lines      
+        msg: "AKS cluster {{ cluster_name }} in resource group {{ resource_group }} {{ cluster_action }}ed successfully"
+      when: aks_result.rc == 0
+
+    - name: Show error if operation failed
+      ansible.builtin.fail:
+        msg: "Failed to {{ cluster_action }} AKS cluster {{ cluster_name }}: {{ aks_result.stderr }}"
+      when: aks_result.rc != 0      
